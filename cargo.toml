@@ -2,6 +2,14 @@
 name = "gitignore-checker"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.65"
+authors = ["Kvn Dtrx <kvn.dtrx+github@protonmail.ch>"]
+description = "Exposes git's ignoring mechanism explicitly"
+license = "license.txt"
+repository = "https://github.com/kvn-dtrx/gitignore-checker"
+readme = "readme.md"
+keywords = ["boilerplate", "files", "automation"]
+categories = ["development-tools"]
 
 [dependencies]
 globset = "0.4"
@@ -10,3 +18,4 @@ log = "0.4"
 tempfile = "3.10"
 env_logger = "0.10"
 clap = { version = "4.3", features = ["derive"] }
+once_cell = "1.19"

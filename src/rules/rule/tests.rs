@@ -46,12 +46,6 @@ fn test_git_pattern_variants() {
 }
 
 #[test]
-fn test_glob_pattern_relative_and_directory() {
-    let r = Rule::from_line("target/").unwrap();
-    assert_eq!(r.glob_pattern(), "**/target/");
-}
-
-#[test]
 fn test_matches_with_glob() {
     let r = Rule::from_line("*.log").unwrap();
     assert!(r.matches("foo.log"));

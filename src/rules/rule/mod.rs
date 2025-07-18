@@ -59,16 +59,28 @@ impl Rule {
         })
     }
 
-    pub fn glob_pattern(&self) -> String {
-        let mut tmp_pattern = self.reduced_pattern.clone();
+    pub fn glob_patterns(&self) -> Vec<String> {
+        // This vector shall incorporate the derived glob patterns—
+        // at least one, at most two.
+        let mut glob_patterns = Vec::new();
+        let mut glob_pattern = self.reduced_pattern.clone();
+        // If the rule is relative, prepend a double glob star
+        // to the glob pattern.
         if !self.is_absolute {
-            // An relative reduced_pattern is prepended by a double glob star.
-            tmp_pattern = format!("**/{}", tmp_pattern);
+            glob_pattern = format!("**/{}", glob_pattern);
         }
-        if self.is_directory {
-            tmp_pattern = format!("{}/", tmp_pattern);
+        // If the rule is not directory-specific, add the glob
+        // pattern as is to the vector.
+        if !self.is_directory {
+            glob_patterns.push(glob_pattern.clone());
         }
-        tmp_pattern
+        // No matter whether the rule is directory-specific or not,
+        // append a slash to the glob pattern and add the result
+        // to the vector.
+        glob_pattern = format!("{}/", glob_pattern);
+        glob_patterns.push(glob_pattern.clone());
+        // Now, the vector is fully populated.
+        glob_patterns
     }
 
     pub fn git_pattern(&self) -> String {
@@ -83,9 +95,11 @@ impl Rule {
     }
 
     pub fn matches(&self, path: &str) -> bool {
-        let glob_pattern_ = self.glob_pattern();
-        let glob_pattern = Pattern::new(&glob_pattern_).unwrap();
-        glob_pattern.matches(path)
+        self.glob_patterns().iter().any(|pattern_str| {
+            Pattern::new(pattern_str)
+                .map(|p| p.matches(path))
+                .unwrap_or(false)
+        })
     }
 }
 

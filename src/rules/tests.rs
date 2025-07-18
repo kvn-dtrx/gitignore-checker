@@ -4,10 +4,11 @@
 
 // ---
 
-use super::*;
+// use super::*;
+use crate::decomposed_path::PathComponent;
 use crate::rules::Rule;
-use std::fs::{self, File};
-use std::path::PathBuf;
+use crate::utils::init_logger;
+use std::fs;
 use tempfile::tempdir;
 
 // Helper: create a Rule from a gitignore line string.
@@ -17,6 +18,7 @@ fn rule_from_line(line: &str) -> Rule {
 
 #[test]
 fn test_rules_new_and_add() {
+    init_logger();
     let mut rules = Rules::new();
     assert_eq!(rules.rules.len(), 0);
 
@@ -27,6 +29,8 @@ fn test_rules_new_and_add() {
 
 #[test]
 fn test_from_file_reads_rules() {
+    init_logger();
+
     let dir = tempdir().unwrap();
     let file_path = dir.path().join("gitignore");
     fs::write(&file_path, "*.log\n!important.log\n").unwrap();
@@ -39,48 +43,107 @@ fn test_from_file_reads_rules() {
 
 #[test]
 fn test_ignore_basic_patterns() {
+    init_logger();
+
     let mut rules = Rules::new();
     rules.add(rule_from_line("ignored_dir/"));
     rules.add(rule_from_line("!ignored_dir/not_ignored.txt"));
 
-    let dir = tempdir().unwrap();
+    let dir = DecomposedPath {
+        path_components: vec![PathComponent {
+            name: "ignored_dir".to_string(),
+            is_symlink: false,
+        }],
+        is_dir: true,
+    };
 
-    let ignored_dir = dir.path().join("ignored_dir");
-    fs::create_dir(&ignored_dir).unwrap();
+    let not_ignored = DecomposedPath {
+        path_components: vec![
+            PathComponent {
+                name: "ignored_dir".to_string(),
+                is_symlink: false,
+            },
+            PathComponent {
+                name: "not_ignored.txt".to_string(),
+                is_symlink: false,
+            },
+        ],
+        is_dir: false,
+    };
 
-    let not_ignored = ignored_dir.join("not_ignored.txt");
-    File::create(&not_ignored).unwrap();
+    let ignored_file = DecomposedPath {
+        path_components: vec![
+            PathComponent {
+                name: "ignored_dir".to_string(),
+                is_symlink: false,
+            },
+            PathComponent {
+                name: "ignored_file.txt".to_string(),
+                is_symlink: false,
+            },
+        ],
+        is_dir: false,
+    };
 
-    let ignored_file = ignored_dir.join("ignored_file.txt");
-    File::create(&ignored_file).unwrap();
-
-    // The directory itself should be ignored.
-    assert!(rules.ignore(&ignored_dir));
-
-    // // The explicitly negated file should not be ignored.
-    // assert!(!rules.ignore(&not_ignored));
-
-    // // The other file should be ignored.
-    // assert!(rules.ignore(&ignored_file));
+    assert!(rules.ignore_(&dir));
+    assert!(rules.ignore_(&not_ignored));
+    assert!(rules.ignore_(&ignored_file));
 }
 
 #[test]
-fn test_ignore_symlink_handling() {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::symlink;
-        let dir = tempdir().unwrap();
+fn test_ignore_symlink_handling_unit() {
+    init_logger();
 
-        let real_dir = dir.path().join("real");
-        fs::create_dir(&real_dir).unwrap();
+    let mut rules = Rules::new();
+    rules.add(rule_from_line("link/"));
 
-        let link_dir = dir.path().join("link");
-        symlink(&real_dir, &link_dir).unwrap();
+    let link_dir = DecomposedPath {
+        path_components: vec![PathComponent {
+            name: "link".to_string(),
+            is_symlink: true,
+        }],
+        is_dir: true,
+    };
 
-        let mut rules = Rules::new();
-        rules.add(rule_from_line("link/"));
+    let real_dir = DecomposedPath {
+        path_components: vec![PathComponent {
+            name: "real".to_string(),
+            is_symlink: false,
+        }],
+        is_dir: true,
+    };
 
-        // The symlinked directory should be matched by the rule.
-        assert!(rules.ignore(&link_dir));
-    }
+    assert!(rules.ignore_(&link_dir));
+
+    assert!(!rules.ignore_(&real_dir));
+}
+
+#[test]
+fn test_foo() {
+    init_logger();
+
+    let mut rules = Rules::new();
+    // rules.add(rule_from_line("bar"));
+    // rules.add(rule_from_line("!*/"));
+    rules.add(rule_from_line("!*.txt"));
+
+    let txt = DecomposedPath {
+        path_components: vec![
+            PathComponent {
+                name: "foo".to_string(),
+                is_symlink: true,
+            },
+            PathComponent {
+                name: "bar".to_string(),
+                is_symlink: false,
+            },
+            // PathComponent {
+            //     name: "baz.tex".to_string(),
+            //     is_symlink: false,
+            // },
+        ],
+        is_dir: false,
+    };
+
+    assert!(rules.ignore_(&txt));
 }
