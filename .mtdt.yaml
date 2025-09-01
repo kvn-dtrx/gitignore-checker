@@ -1,0 +1,7 @@
+project:
+  name: Gitignore Checker
+  description: A reimplementation attempt of Git's ignoring mechanism
+  github: https://github.com/kvn-dtrx/gitignore-checker
+  authors:
+    - name: Kvn Dtrx
+      mail: kvn.dtrx+git@protonmail.ch
